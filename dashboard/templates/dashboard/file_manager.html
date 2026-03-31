@@ -1,0 +1,75 @@
+{% extends 'dashboard/base.html' %}
+{% block content %}
+<div style="display:flex;flex-direction:column;align-items:center;gap:1.5rem;">
+    <h2 style="margin-bottom:0.5em;color:#0078d7;">File Manager</h2>
+    <div style="width:100%;max-width:340px;word-break:break-all;font-size:0.98em;color:#555;background:#eef6fb;padding:0.5em 1em;border-radius:8px;">
+        Current Path: {{ current_path|default:"[Drives]" }}
+    </div>
+    {% if not is_drive_root %}
+        <a href="{% if parent_path and parent_path != current_path %}?path={{ parent_path }}{% else %}?{% endif %}" class="button" style="max-width:340px;margin-bottom:0.5em;background:#e0e7ef;color:#0078d7;font-weight:500;">⬅️ Up One Level</a>
+    {% endif %}
+    {% if error %}
+    <div style="color:#d32f2f;background:#fff0f0;padding:0.5em 1em;border-radius:8px;margin-bottom:1em;max-width:340px;">{{ error }}</div>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data" style="width:100%;max-width:340px;background:#f7f9fc;padding:1.5em 1em;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,0.04);display:flex;flex-direction:column;gap:0.7em;align-items:stretch;">
+        {% csrf_token %}
+        <label for="file">Upload file:</label>
+        <input type="file" name="file" id="file" required style="padding:0.7em 0.5em;">
+        <button class="button" type="submit" style="margin-top:0.7em;">Upload</button>
+    </form>
+    <div style="width:100%;max-width:340px;">
+        <h3 style="margin:1.2em 0 0.7em 0;font-size:1.1rem;color:#0078d7;">
+            {% if is_drive_root %}Drives{% else %}Folders{% endif %}
+        </h3>
+        <ul style="list-style:none;padding:0;margin:0;">
+            {% for folder in folders %}
+                <li style="background:#f7f9fc;margin-bottom:0.5em;padding:0.7em 1em;border-radius:8px;display:flex;align-items:center;gap:0.7em;">
+                    {% if is_drive_root %}
+                        <!-- Drive icon -->
+                        <svg width="22" height="20" fill="none" viewBox="0 0 24 24">
+                            <rect x="2" y="7" width="20" height="10" rx="3" fill="#e0e7ef" stroke="#0078d7" stroke-width="2"/>
+                            <rect x="6" y="13" width="2" height="2" rx="1" fill="#0078d7"/>
+                            <rect x="16" y="13" width="2" height="2" rx="1" fill="#0078d7"/>
+                        </svg>
+                        <a href="?path={{ folder }}" style="color:#0078d7;font-weight:500;">{{ folder }}</a>
+                    {% else %}
+                        <!-- Folder icon -->
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2" fill="#e0e7ef" stroke="#0078d7" stroke-width="2"/><path d="M3 7l3-3h6l3 3" stroke="#00b4d8" stroke-width="2"/></svg>
+                        <a href="?path={{ current_path|add:'/'|add:folder }}" style="color:#0078d7;font-weight:500;">{{ folder }}</a>
+                    {% endif %}
+                </li>
+            {% empty %}
+                <li style="color:#888;text-align:center;">
+                    {% if is_drive_root %}No drives found.{% else %}No folders.{% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+        <h3 style="margin:1.2em 0 0.7em 0;font-size:1.1rem;color:#0078d7;">Files</h3>
+        <ul style="list-style:none;padding:0;margin:0;">
+            {% for f in files %}
+                <li style="background:#f7f9fc;margin-bottom:0.5em;padding:0.7em 1em;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:0.5em;">
+                    <span style="word-break:break-all;align-self:center;">{{ f }}</span>
+                    <div style="display:flex;gap:0.3em;align-items:center;height:100%;">
+                        <a href="/preview/{{ f }}?path={{ current_path }}" title="Preview" style="background:none;border:none;padding:0.3em 0.5em;cursor:pointer;display:inline-flex;align-items:center;vertical-align:middle;">
+                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="#0078d7" stroke-width="2"/><path d="M8 12l2.5 2.5L16 9" stroke="#0078d7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </a>
+                        <a href="/download/{{ f }}?path={{ current_path }}" title="Download" style="background:none;border:none;padding:0.3em 0.5em;cursor:pointer;display:inline-flex;align-items:center;vertical-align:middle;">
+                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M12 4v12m0 0l-4-4m4 4l4-4" stroke="#0078d7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="4" y="18" width="16" height="2" rx="1" fill="#0078d7"/></svg>
+                        </a>
+                        <form method="post" style="display:inline;margin:0;padding:0;">
+                            {% csrf_token %}
+                            <input type="hidden" name="delete_file" value="{{ f }}">
+                            <button type="submit" title="Delete" style="background:none;border:none;padding:0.3em 0.5em;cursor:pointer;display:inline-flex;align-items:center;vertical-align:middle;">
+                                <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="12" rx="2" stroke="#d32f2f" stroke-width="2"/><path d="M10 11v4m4-4v4" stroke="#d32f2f" stroke-width="2" stroke-linecap="round"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" stroke="#d32f2f" stroke-width="2"/></svg>
+                            </button>
+                        </form>
+                    </div>
+                </li>
+            {% empty %}
+                <li style="color:#888;text-align:center;">No files.</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <a href="/" class="button" style="max-width:340px;">Back to Dashboard</a>
+</div>
+{% endblock %}

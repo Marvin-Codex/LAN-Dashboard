@@ -1,0 +1,181 @@
+{% extends 'dashboard/base.html' %}
+{% block content %}
+<style>
+  .logs-container {
+    max-width: 700px;
+    margin: 2em auto;
+    padding: 0;
+    background: none;
+  }
+  .logs-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #fff;
+    padding: 1.2em 1em 0.7em 1em;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .logs-title {
+    color: #ff6f00;
+    margin-bottom: 0.7em;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+  .logs-search-form {
+    width: 100%;
+    max-width: 420px;
+    margin-bottom: 0.5em;
+    display: flex;
+    gap: 0.7em;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .logs-search-input {
+    flex: 1;
+    padding: 0.7em 1em;
+    border-radius: 8px;
+    border: 1px solid #bbb;
+    font-size: 1.08em;
+    min-width: 0;
+  }
+  .logs-search-btn {
+    padding: 0.7em 1.2em;
+    font-size: 1.08em;
+    min-width: 110px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(90deg,#ffb300 0%,#ff6f00 100%);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(255,111,0,0.10);
+    transition: filter 0.15s;
+  }
+  .logs-search-btn:active, .logs-search-btn:focus, .logs-search-btn:hover {
+    filter: brightness(1.08);
+  }
+  .logs-table-wrap {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 60vh;
+    background: #f7f9fc;
+    border-radius: 0 0 16px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 0.5em 0.5em 1.5em 0.5em;
+  }
+  .logs-table {
+    width: 100%;
+    min-width: 600px;
+    border-collapse: separate;
+    border-spacing: 0 0.5em;
+    font-size: 1.01em;
+    display: table;
+  }
+  .logs-table th {
+    position: sticky;
+    top: 0;
+    background: #e0e7ef;
+    color: #ff6f00;
+    z-index: 1;
+    padding: 0.7em 0.7em;
+    text-align: left;
+    font-weight: 700;
+  }
+  .logs-table td {
+    padding: 0.6em 0.7em;
+    vertical-align: middle;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+    word-break: break-all;
+    max-width: 180px;
+  }
+  .logs-table tr.admin-action td {
+    color: #d32f2f;
+    font-weight: 600;
+  }
+  /* Mobile card layout */
+  @media (max-width: 700px) {
+    .logs-table, .logs-table thead, .logs-table tbody, .logs-table tr, .logs-table th, .logs-table td {
+      display: block;
+      width: 100%;
+      min-width: unset;
+      box-sizing: border-box;
+    }
+    .logs-table thead {
+      display: none;
+    }
+    .logs-table tr {
+      margin-bottom: 1.1em;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+      padding: 0.7em 0.5em;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2em;
+    }
+    .logs-table td {
+      background: none;
+      box-shadow: none;
+      border-radius: 0;
+      padding: 0.45em 0.7em;
+      max-width: unset;
+      font-size: 1.08em;
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+    }
+    .logs-table td:before {
+      content: attr(data-label);
+      font-weight: 700;
+      color: #0078d7;
+      min-width: 80px;
+      display: inline-block;
+      margin-right: 0.5em;
+    }
+    .logs-table tr.admin-action td {
+      color: #d32f2f;
+    }
+  }
+</style>
+<div class="logs-container">
+  <div class="logs-header">
+    <h2 class="logs-title">User Activity Logs</h2>
+    <form method="get" class="logs-search-form">
+      <input type="text" name="q" value="{{ request.GET.q|default:'' }}" placeholder="Search user, action, path, IP..." class="logs-search-input">
+      <button class="logs-search-btn" type="submit">Search</button>
+    </form>
+  </div>
+  <div class="logs-table-wrap">
+    <table class="logs-table">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Action</th>
+          <th>Path</th>
+          <th>IP</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr{% if log.action in 'delete,shutdown,restart,lock' %} class="admin-action"{% endif %}>
+          <td data-label="User">{{ log.user.username }}</td>
+          <td data-label="Action">{{ log.action }}</td>
+          <td data-label="Path">{{ log.path|default:'-' }}</td>
+          <td data-label="IP">{{ log.ip_address|default:'-' }}</td>
+          <td data-label="Time">{{ log.timestamp|date:'Y-m-d H:i:s' }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="color:#888;text-align:center;padding:2em;font-size:1.1em;">No logs found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

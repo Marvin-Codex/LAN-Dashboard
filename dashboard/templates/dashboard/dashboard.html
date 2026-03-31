@@ -1,0 +1,129 @@
+{% extends 'dashboard/base.html' %}
+{% block content %}
+<h2>Welcome, {{ user.username }}</h2>
+<ul>
+    <li>PC Name: {{ pc_name }}</li>
+    <li>IP Address: {{ ip_address }}</li>
+    <li>Server Uptime: {{ uptime }}</li>
+    <li>Date & Time: {{ date_time }}</li>
+</ul>
+
+<style>
+.dashboard-btn {
+  width: 100%;
+  max-width: 420px;
+  min-width: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7em;
+  font-size: 1.13rem;
+  font-weight: 600;
+  border-radius: 12px;
+  border: none;
+  outline: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: transform 0.08s, box-shadow 0.12s, background 0.18s;
+  cursor: pointer;
+  margin-bottom: 0.1em;
+  padding: 0.95em 0.5em;
+  user-select: none;
+}
+.dashboard-btn.file {
+  background: linear-gradient(90deg,#00b4d8 0%,#0078d7 100%);
+  color: #fff;
+  border: 2px solid #00b4d8;
+}
+.dashboard-btn.logs {
+  background: linear-gradient(90deg,#ffb300 0%,#ff6f00 100%);
+  color: #fff;
+  border: 2px solid #ffb300;
+}
+.dashboard-btn.mouse {
+  background: linear-gradient(90deg,#43e97b 0%,#38f9d7 100%);
+  color: #fff;
+  border: 2px solid #43e97b;
+}
+.dashboard-btn:active {
+  transform: scale(0.97);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+}
+.dashboard-btn:hover, .dashboard-btn:focus {
+  filter: brightness(1.08);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.13);
+}
+</style>
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:0.7em;margin-bottom:1.2em;">
+  <a href="/files/" class="dashboard-btn file">
+      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" style="vertical-align:middle;"><rect x="3" y="6" width="18" height="14" rx="2" fill="#fff" stroke="#0078d7" stroke-width="2"/><path d="M7 6V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" stroke="#00b4d8" stroke-width="2"/></svg>
+      File Manager (Upload/Download)
+  </a>
+  {% if is_admin %}
+  <a href="/activity-logs/" class="dashboard-btn logs">
+      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" style="vertical-align:middle;"><rect x="3" y="4" width="18" height="16" rx="2" fill="#fff" stroke="#ff6f00" stroke-width="2"/><path d="M7 8h10M7 12h10M7 16h6" stroke="#ffb300" stroke-width="2"/></svg>
+      View Activity Logs
+  </a>
+  <a href="/phone-mouse/" class="dashboard-btn mouse">
+      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" style="vertical-align:middle;"><ellipse cx="12" cy="12" rx="9" ry="11" fill="#fff" stroke="#43e97b" stroke-width="2"/><circle cx="12" cy="8" r="2" fill="#43e97b"/><rect x="11" y="10" width="2" height="7" rx="1" fill="#43e97b"/></svg>
+      Phone Mouse (Admin)
+  </a>
+  {% endif %}
+</div>
+
+<h3>Connected Devices (LAN)</h3>
+<ul>
+    {% for device in devices %}
+        <li>{{ device.ip }} ({{ device.mac }})</li>
+    {% empty %}
+        <li>No devices found.</li>
+    {% endfor %}
+</ul>
+
+{% if is_admin %}
+<h3>System Control Actions</h3>
+<form method="post" style="margin-bottom:1em;">
+    {% csrf_token %}
+    <button class="button" name="action" value="shutdown" onclick="return confirm('Shutdown PC?')">Shutdown</button>
+    <button class="button" name="action" value="restart" onclick="return confirm('Restart PC?')">Restart</button>
+    <button class="button" name="action" value="lock">Lock Screen</button>
+</form>
+<form method="post">
+    {% csrf_token %}
+    <label for="program_select">Start Program:</label>
+    <select id="program_select" name="program" onchange="document.getElementById('custom_program').style.display = this.value === 'custom' ? 'block' : 'none';">
+        <option value="notepad">Notepad</option>
+        <option value="calc">Calculator</option>
+        <option value="mspaint">Paint</option>
+        <option value="cmd">Command Prompt</option>
+        <option value="explorer">File Explorer</option>
+        <option value="powershell">PowerShell</option>
+        <option value="taskmgr">Task Manager</option>
+        <option value="regedit">Registry Editor</option>
+        <option value="control">Control Panel</option>
+        <option value="write">WordPad</option>
+        <option value="snippingtool">Snipping Tool</option>
+        <option value="chrome">Google Chrome</option>
+        <option value="firefox">Mozilla Firefox</option>
+        <option value="edge">Microsoft Edge</option>
+        <option value="custom">Other (type below)</option>
+    </select>
+    <input type="text" id="custom_program" name="custom_program" placeholder="Custom program (e.g. vlc)" style="display:none;margin-top:0.5em;">
+    <button class="button" name="action" value="start_program">Start Program</button>
+</form>
+<script>
+// Show/hide custom input on page load if needed
+window.addEventListener('DOMContentLoaded', function() {
+  var sel = document.getElementById('program_select');
+  var custom = document.getElementById('custom_program');
+  if(sel.value === 'custom') custom.style.display = 'block';
+});
+</script>
+{% endif %}
+
+{% if action_result %}
+<div style="color:green;">{{ action_result }}</div>
+{% endif %}
+
+<a href="/logout/" class="button">Logout</a>
+{% endblock %}
