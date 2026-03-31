@@ -1,204 +1,328 @@
-🧩 Django LAN Dashboard — Description
+# 🖥️ LAN Dashboard
+
+A locally-hosted web control panel built with **Django** that lets any device on the same Wi-Fi or hotspot network securely monitor and control a PC — entirely without an internet connection.
+
+---
+
+## 📖 Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Running the Server](#running-the-server)
+- [Accessing from Other Devices](#accessing-from-other-devices)
+- [Usage](#usage)
+- [Project Structure](#project-structure)
+- [Security Model](#security-model)
+- [Use Cases](#use-cases)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## Overview
+
+**LAN Dashboard** is a self-hosted, mobile-first web application that turns any PC into a local control hub.  Once the Django server is running, any smartphone, tablet, or laptop connected to the same Wi-Fi or hotspot can open a browser, log in, and interact with the host machine — no cloud, no internet, no external services required.
+
+```
+Phone / Tablet / Laptop  ──── Wi-Fi / Hotspot ────  PC (Django Server)
+        Browser                                        Port 8000
+```
+
+---
+
+## Features
+
+### 🔐 Authentication & Access Control
+- Secure local login / logout with Django's built-in session management
+- **Admin** and **User** role separation via Django groups
+- All pages require authentication; restricted pages require admin role
+- CSRF protection enabled on all forms
+
+### 📊 Live System Dashboard
+- Displays real-time **PC hostname**, **LAN IP address**, **server uptime**, and **current date/time**
+- Scans the local ARP table to list **connected LAN devices** (IP + MAC address)
+
+### ⚙️ Remote System Control *(Admin only)*
+- **Shutdown**, **Restart**, and **Lock Screen** the host machine with a single button
+- **Launch programs** remotely from a curated list (Notepad, Calculator, Chrome, PowerShell, etc.) or type a custom executable name
+
+### 📁 Full File Manager *(Admin only)*
+- Browse the **entire file system** of the host PC (all drives on Windows, root on Linux)
+- **Upload** files from any connected device to the PC
+- **Download** any file from the PC to the connected device
+- **Delete** files directly from the browser
+- **Preview** text files, images, audio, and video inline in the browser
+
+### 📋 Activity Logs *(Admin only)*
+- Tracks every user action: logins, file uploads, downloads, deletions, and previews
+- Records **username**, **action type**, **file path**, **IP address**, and **timestamp**
+- Searchable log table (filter by user, action, path, or IP)
+
+### 🖱️ Phone Mouse *(Admin only)*
+- Use a phone's touchpad interface to **control the host PC's mouse cursor in real time**
+- Powered by **WebSocket** (Django Channels) for low-latency communication
+- Supports **move**, **left click**, **right click**, **press**, and **release** gestures
+
+### 📱 Mobile-First UI
+- Responsive layout designed primarily for smartphones and touch screens
+- Touch-friendly buttons and controls throughout
+
+---
+
+## Architecture
 
-A Django LAN Dashboard is a locally hosted web control panel that runs on a PC and is accessed by other devices (phones, tablets, laptops) connected to the same hotspot or Wi-Fi network, without using the internet.
+```
+┌──────────────────────────────────────────────────────────┐
+│                     Client Devices (LAN)                 │
+│        Phone  /  Tablet  /  Laptop  /  Desktop           │
+│                     Web Browser                          │
+└──────────────────────┬───────────────────────────────────┘
+                       │  HTTP / WebSocket (LAN only)
+                       │  e.g. http://192.168.x.x:8000
+┌──────────────────────▼───────────────────────────────────┐
+│                     Host PC — Django                     │
+│                                                          │
+│  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐  │
+│  │  Django     │  │  Django      │  │  Django        │  │
+│  │  Views      │  │  Channels    │  │  Auth +        │  │
+│  │  (HTTP)     │  │  (WebSocket) │  │  Sessions      │  │
+│  └──────┬──────┘  └──────┬───────┘  └────────────────┘  │
+│         │                │                               │
+│  ┌──────▼────────────────▼──────────────────────────┐   │
+│  │              SQLite Database                      │   │
+│  │         (users, groups, activity logs)            │   │
+│  └───────────────────────────────────────────────────┘   │
+│                                                          │
+│  ┌───────────────────┐   ┌───────────────────────────┐  │
+│  │  OS / File System │   │  PyAutoGUI (mouse control)│  │
+│  │  (Windows/Linux)  │   │                           │  │
+│  └───────────────────┘   └───────────────────────────┘  │
+└──────────────────────────────────────────────────────────┘
+```
 
-The system works entirely on a local area network (LAN).
+**No API calls outside the network. Everything stays local.**
 
-🔧 How it works
+---
 
-PC runs Django server (0.0.0.0)
+## Prerequisites
 
-Phone connects via hotspot
+| Requirement | Version |
+|---|---|
+| Python | 3.10 or newer |
+| pip | Latest |
+| Django | 5.x |
+| Django Channels | 4.x |
+| Daphne (ASGI server) | 4.x |
+| PyAutoGUI | Latest |
 
-Phone browser accesses:
+> **Note:** The Phone Mouse feature (`pyautogui`) requires a display. On headless Linux servers you may need to configure a virtual display (e.g., `Xvfb`).
 
-http://PC-IP:8000
+---
 
+## Installation
 
-Django serves pages in real time over LAN
+### 1. Clone the repository
 
-No cloud.
-No internet.
-No external services.
+```bash
+git clone https://github.com/Marvin-Codex/LAN-Dashboard.git
+cd LAN-Dashboard
+```
 
-🎯 Purpose
+### 2. Create and activate a virtual environment
 
-The LAN dashboard allows users to monitor, control, or manage a system from any device on the same network.
+```bash
+# Windows
+python -m venv venv
+venv\Scripts\activate
 
-It behaves like:
+# Linux / macOS
+python -m venv venv
+source venv/bin/activate
+```
 
-Router admin panel
+### 3. Install dependencies
 
-School intranet system
+```bash
+pip install django channels daphne pyautogui
+```
 
-Office internal dashboard
+### 4. Apply database migrations
 
-🧠 Core features
-1. Authentication
+```bash
+python manage.py migrate
+```
 
-Local login system
+### 5. Create a superuser (admin account)
 
-Admin / user roles
+```bash
+python manage.py createsuperuser
+```
 
-Session-based access
+Follow the prompts to set a username and password. This account will have full admin access in the dashboard.
 
-2. Live system information
+### 6. Collect static files
 
-PC name
+```bash
+python manage.py collectstatic --noinput
+```
 
-IP address
+---
 
-Connected devices
+## Configuration
 
-Server uptime
+All configuration lives in `lan_dashboard/settings.py`.
 
-Date & time
+| Setting | Default | Notes |
+|---|---|---|
+| `ALLOWED_HOSTS` | `['*']` | Accepts all hosts on the LAN. Restrict to specific IPs for tighter security. |
+| `DEBUG` | `True` | Set to `False` for production-like deployments. |
+| `TIME_ZONE` | `'UTC'` | Change to your local timezone (e.g. `'Africa/Kampala'`). |
+| `DATABASES` | SQLite | No external database needed. |
+| `LOGIN_URL` | `'/login/'` | Redirect for unauthenticated users. |
+| `LOGIN_REDIRECT_URL` | `'/'` | Redirect after successful login. |
 
-3. Control actions (optional)
+> ⚠️ **Important:** Replace the `SECRET_KEY` in `settings.py` with a strong, randomly generated key before sharing or deploying the project.
 
-Shutdown PC
+---
 
-Restart PC
+## Running the Server
 
-Lock screen
+### Using Daphne (recommended — supports WebSocket for Phone Mouse)
 
-Start programs
+```bash
+daphne -b 0.0.0.0 -p 8000 lan_dashboard.asgi:application
+```
 
-Manage background tasks
+### Using Django's development server (HTTP only — Phone Mouse will not work)
 
-(Executed securely on server side)
+```bash
+python manage.py runserver 0.0.0.0:8000
+```
 
-4. File access (LAN)
+`0.0.0.0` binds the server to all network interfaces so it is reachable from other devices on the LAN.
 
-Upload files from phone to PC
+---
 
-Download files from PC
+## Accessing from Other Devices
 
-Share folders locally
+1. Find the **LAN IP address** of the host PC:
+   - **Windows:** Run `ipconfig` in a command prompt and look for the IPv4 address (e.g., `192.168.1.5`).
+   - **Linux/macOS:** Run `ip addr` or `hostname -I`.
 
-5. Activity logs
+2. On any device connected to the **same Wi-Fi or hotspot**, open a browser and navigate to:
 
-Login history
+   ```
+   http://<HOST-PC-IP>:8000
+   ```
 
-Action logs
+   Example: `http://192.168.1.5:8000`
 
-Time tracking
+3. Log in with the superuser credentials created during installation.
 
-6. Mobile-first interface
+---
 
-Designed mainly for phones
+## Usage
 
-Touch-friendly dashboard
+### URL Reference
 
-Responsive layout
+| URL | Description | Access |
+|---|---|---|
+| `/` | Main dashboard | All logged-in users |
+| `/login/` | Login page | Public |
+| `/logout/` | Logout | All logged-in users |
+| `/files/` | File manager — browse, upload, download, delete, preview | Admin only |
+| `/download/<filename>/` | Direct file download (uses `?path=` query param) | Admin only |
+| `/preview/<filename>/` | Inline file preview (uses `?path=` query param) | Admin only |
+| `/activity-logs/` | User activity log viewer with search | Admin only |
+| `/phone-mouse/` | WebSocket-powered touchpad mouse controller | Admin only |
 
-🏗 Architecture
-Phone Browser
-      ↓
-HTTP Requests (LAN)
-      ↓
-Django Views
-      ↓
-System Controller (Python)
-      ↓
-Windows OS
+### Creating Additional Users
 
+Use the Django admin panel at `/admin/` to create additional user accounts and assign them to the `admin` group to grant admin privileges.
 
-No APIs outside the network.
+---
 
-🧪 Example use cases
+## Project Structure
 
-PC remote controller
+```
+LAN-Dashboard/
+├── dashboard/                  # Main Django application
+│   ├── migrations/             # Database migrations
+│   ├── static/dashboard/       # Custom CSS (style.css)
+│   ├── templates/dashboard/    # HTML templates
+│   │   ├── base.html           # Base layout
+│   │   ├── login.html          # Login page
+│   │   ├── dashboard.html      # Main dashboard
+│   │   ├── file_manager.html   # File manager
+│   │   ├── activity_logs.html  # Activity log viewer
+│   │   └── phone_mouse.html    # Phone mouse touchpad
+│   ├── admin.py                # Django admin registrations
+│   ├── apps.py                 # App configuration
+│   ├── consumers.py            # WebSocket consumer (Phone Mouse)
+│   ├── models.py               # UserActivityLog model
+│   ├── routing.py              # WebSocket URL routing
+│   ├── urls.py                 # HTTP URL routing
+│   └── views.py                # All view logic
+├── lan_dashboard/              # Django project configuration
+│   ├── asgi.py                 # ASGI entry point (HTTP + WebSocket)
+│   ├── settings.py             # Project settings
+│   ├── urls.py                 # Root URL configuration
+│   └── wsgi.py                 # WSGI entry point
+├── staticfiles/                # Collected static files (after collectstatic)
+├── db.sqlite3                  # SQLite database (created after migrate)
+├── manage.py                   # Django management utility
+└── LICENSE
+```
 
-Offline school system
+---
 
-Cyber café management
+## Security Model
 
-Local attendance system
+| Layer | Implementation |
+|---|---|
+| **Network scope** | Server binds to LAN interface only; not exposed to the internet |
+| **Authentication** | Django session-based login required for every page |
+| **Authorization** | Admin-only features gated by group membership check on every request |
+| **CSRF protection** | Django's `CsrfViewMiddleware` enabled on all POST forms |
+| **File access control** | File manager prevents path traversal; operations are validated to stay within the resolved path |
+| **WebSocket security** | Phone Mouse WebSocket connection validates session and admin role on connect; closes immediately if unauthorized |
 
-Offline company intranet
+> **Reminder:** This application is designed for trusted local networks. Do not expose port 8000 to the public internet without additional hardening (firewall rules, a reverse proxy with TLS, etc.).
 
-Testing backend systems without internet
+---
 
-🔐 Security model
+## Use Cases
 
-Accessible only inside LAN
+- **Home PC remote control** — Control your desktop from your phone while sitting across the room
+- **Offline classroom system** — Teacher's PC as a server; students access shared resources on tablets
+- **Cyber café management** — Monitor and control multiple machines from a central admin device
+- **Local attendance tracking** — Log-in based activity tracking without any cloud dependency
+- **Company intranet kiosk** — Internal dashboard for an office without public internet
+- **Embedded/IoT control panel** — Manage a Raspberry Pi or local server from any browser on the network
 
-Login required
+---
 
-Optional IP whitelisting
+## Contributing
 
-CSRF + session security
+Contributions are welcome! To get started:
 
-No public exposure
+1. Fork this repository
+2. Create a new branch: `git checkout -b feature/your-feature-name`
+3. Make your changes and commit: `git commit -m "Add your feature"`
+4. Push to your fork: `git push origin feature/your-feature-name`
+5. Open a Pull Request against the `main` branch
 
-🧠 Why this is important (engineering-wise)
+Please keep code style consistent with the existing codebase and test changes on at least one LAN-connected device before submitting.
 
-This project teaches:
+---
 
-Client–server architecture
+## License
 
-Network communication
+This project is licensed under the **MIT License**.  
+See the [LICENSE](LICENSE) file for full details.
 
-LAN routing
-
-Port binding
-
-Backend system control
-
-Real-world Django deployment logic
-
-This is real software engineering, not CRUD only.
-
-📌 Summary (short)
-
-A Django LAN Dashboard is a locally hosted web-based control system that allows devices on the same network to securely access and manage a computer or internal system without internet connectivity.
-
-If you want next, I can give you:
-
-✅ project folder structure
-
-✅ feature list for coursework
-
-✅ database models
-
-✅ dashboard UI layout
-
-✅ step-by-step build plan
-
-Just say which one.
-
-
-
-
-
-
-
-
-
-
-
-Sprint 1: Project Setup & Authentication
-
-Initialize Django project/app.
-Set up local static files for custom CSS/JS.
-Implement local login system (admin/user roles).
-Create basic dashboard page (mobile-first, custom styling).
-Sprint 2: System Info & Control Actions
-
-Display PC name, IP, connected devices, uptime, date/time.
-Add secure server-side actions: shutdown, restart, lock, start programs.
-Sprint 3: File Access & Activity Logs
-
-Enable file upload/download/share over LAN.
-Implement login history, action logs, time tracking.
-Sprint 4: UI/UX & Security
-
-Refine dashboard for mobile/touch.
-Add IP whitelisting, CSRF/session security.
-Polish custom styling, ensure no CDN/external resources.
-Sprint 5: Testing & Deployment
-
-Test on multiple devices in LAN.
-Document usage and deployment steps.
-Finalize for local deployment (no internet required).
+© 2026 Sserunjoji Marvin
